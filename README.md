@@ -36,6 +36,11 @@ The clock tile's colour follows the time of day:
   pill. No glass, blur or shadows anywhere.
 - **Predictable D-pad navigation**: the ends of the top bar don't fall through to the tiles, and focus survives the
   remote's mouse mode (Android "touch mode").
+- **Number keys** open apps: 1-9 the tiles in order, 0 the tenth.
+- **An idle clock**: after 10 minutes untouched on Home, the full-screen clock appears by itself (never over an
+  app or a video); any button closes it.
+- **Windows Phone touches**: the selected tile dips while OK is held, and the tiles unfold into place in a quick
+  sweep when Home comes back from an app.
 
 ## Lightweight
 
@@ -43,7 +48,9 @@ Plain Java and the Android framework's own views: no AndroidX, no libraries, no 
 services. The APK is about 90 KB. Icons and colours are loaded once and only reloaded for apps that changed;
 each icon is drawn once into a bitmap at its tile size. The background and the clock tile's gradients are each
 drawn once into a tiny bitmap that the GPU stretches: computing a full-screen gradient per pixel cost this TV
-about 5 ms a frame, the stretched bitmap nothing measurable.
+about 5 ms a frame, the stretched bitmap nothing measurable. The tile entrance is a plain 2D scale: a fade with
+per-tile layers and a 3D turn were both measured janky on this TV, while the 2D unfold returns Home exactly as
+smoothly as no animation at all. The extras only run on a key press or when Home comes back; nothing polls.
 
 Measured on the TV it was built for (HiSilicon Hi3751V350, Android 12, 1 GB RAM), compared with the launcher it
 replaced, for the same 13 remote presses:
@@ -105,6 +112,10 @@ Everything TV-specific is in `tiles/app/src/main/res/values/config.xml`:
 | `tile_labels` | A tile name instead of the app's own |
 | `clock_gradients` | The clock tile's colours for morning, afternoon, evening and night (two or three colours each) |
 | `clock_color`, `clock_flip_seconds` | The clock tile's fallback colour, and how often it flips (0 keeps it still) |
+| `number_shortcuts` | Number keys open the app tiles (on by default) |
+| `idle_clock_minutes` | Minutes untouched on Home before the full-screen clock appears (10; 0 turns it off) |
+| `press_tilt` | The selected tile dips while OK is held (on by default) |
+| `tile_entrance` | The tiles unfold when Home comes back from an app (on by default) |
 | `greeting_name` | A name after the greeting |
 | `background_colors` | The background gradient |
 

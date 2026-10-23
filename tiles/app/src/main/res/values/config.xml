@@ -75,6 +75,15 @@
         <item>#03060F</item>
         <item>#0A1530</item>
     </string-array>
+    <!-- Number keys 1-9 open the app tiles in their order on screen (0 the tenth), skipping the clock. -->
+    <bool name="number_shortcuts">true</bool>
+    <!-- Minutes Home may sit untouched before the full-screen clock appears by itself; 0 turns it off. Only ever
+         on Home: never over an app or a video. -->
+    <integer name="idle_clock_minutes">10</integer>
+    <!-- The selected tile dips slightly while OK is held, like a Windows Phone tile. -->
+    <bool name="press_tilt">true</bool>
+    <!-- When Home comes back from an app, the tiles turn into place one after another (about 0.4 s). -->
+    <bool name="tile_entrance">true</bool>
     <!-- Seconds between clock tile flips (time on the front, day and date on the back). 0 keeps it still. -->
     <integer name="clock_flip_seconds">15</integer>
     <!-- The clock tile's background through the day, as "#from,#to" (or "#from,#middle,#to") gradients (top left to bottom right) in this

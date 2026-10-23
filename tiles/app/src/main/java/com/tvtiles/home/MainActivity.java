@@ -34,6 +34,7 @@ import android.text.TextUtils;
 import android.util.TypedValue;
 import android.view.Gravity;
 import android.view.KeyEvent;
+import android.view.MotionEvent;
 import android.view.View;
 import android.view.ViewGroup;
 import android.view.animation.AccelerateInterpolator;
@@ -94,6 +95,22 @@ public class MainActivity extends Activity {
     private FrameLayout bigClock;
     private View bigClockBody;
     private final Random random = new Random();
+
+    private boolean numberShortcuts, pressTilt, tileEntrance;
+    /** One shared curve for the focus lift (an animator keeps the last curve it was given). */
+    private static final android.view.animation.Interpolator FOCUS_CURVE = new DecelerateInterpolator();
+    /** How long Home may sit untouched before the full-screen clock appears; 0 = never. */
+    private long idleMs;
+    /** True between onResume and onPause: the idle clock only ever counts down while Home is in front. */
+    private boolean resumed;
+    /** Set when Home goes behind an app, so the tiles turn into place when it comes back. */
+    private boolean entrancePending = true;
+
+    /** Fires once after idleMs without a key press on Home. Re-armed by every key, never repeats by itself. */
+    private final Runnable idleClock = () -> {
+        if (this.resumed && this.bigClock == null && this.movingKey == null
+                && (this.menu == null || !this.menu.isShowing())) showBigClock();
+    };
 
     /** Every flip interval while Home is in front: turn the clock tile, refresh the greeting. Nothing else runs. */
     private final Runnable flipTick = new Runnable() {
@@ -193,6 +210,10 @@ public class MainActivity extends Activity {
             if (id != 0) glyphs.put(entry.substring(0, eq).trim(), id);
         }
         flipMs = getResources().getInteger(R.integer.clock_flip_seconds) * 1000L;
+        idleMs = getResources().getInteger(R.integer.idle_clock_minutes) * 60_000L;
+        numberShortcuts = getResources().getBoolean(R.bool.number_shortcuts);
+        pressTilt = getResources().getBoolean(R.bool.press_tilt);
+        tileEntrance = getResources().getBoolean(R.bool.tile_entrance);
         store = new LayoutStore(this);
         hidden = store.hidden();
         String[] bg = getResources().getStringArray(R.array.background_colors);
@@ -242,13 +263,20 @@ public class MainActivity extends Activity {
         }
         handler.removeCallbacks(flipTick);
         if (flipMs > 0) handler.postDelayed(flipTick, flipMs);
+        resumed = true;
+        resetIdle();
+        if (tileEntrance && entrancePending) playEntrance();
+        entrancePending = false;
     }
 
     /** Nothing ticks while an app or the screen is in front of Home. */
     @Override
     protected void onPause() {
+        resumed = false;
         handler.removeCallbacks(flipTick);
+        handler.removeCallbacks(idleClock);
         hideBigClock(false);
+        entrancePending = true;
         super.onPause();
     }
 
@@ -669,7 +697,8 @@ public class MainActivity extends Activity {
         });
         t.setOnFocusChangeListener((v, focused) -> {
             if (movingKey == null) v.setForeground(focused ? outline(3) : null);
-            v.animate().scaleX(focused ? 1.04f : 1f).scaleY(focused ? 1.04f : 1f).setDuration(110).start();
+            v.animate().scaleX(focused ? 1.04f : 1f).scaleY(focused ? 1.04f : 1f).setDuration(110)
+                    .setStartDelay(0).setInterpolator(FOCUS_CURVE).start();
             v.setTranslationZ(focused ? dp(4) : 0);
             if (focused) lastFocusedKey = (String) v.getTag();
         });
@@ -1026,6 +1055,7 @@ public class MainActivity extends Activity {
     @Override
     public boolean dispatchKeyEvent(KeyEvent event) {
         int code = event.getKeyCode();
+        resetIdle();
         if (bigClock != null) {
             // Any button closes the full-screen clock (on release, so the press doesn't reach a tile).
             if (event.getAction() == KeyEvent.ACTION_UP) hideBigClock(true);
@@ -1051,7 +1081,84 @@ public class MainActivity extends Activity {
                 return true;
             }
         }
+        int digit = digitOf(code);
+        if (numberShortcuts && digit >= 0) {
+            // 1-9 open the first nine app tiles, 0 the tenth. Handled on press; the release is swallowed too.
+            if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                String key = nthAppKey(digit == 0 ? 9 : digit - 1);
+                AppEntry e = key == null ? null : apps.get(key);
+                if (e != null) {
+                    focusKey(key);
+                    launch(e);
+                }
+            }
+            return true;
+        }
+        if (pressTilt && (code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER)) {
+            View f = getCurrentFocus();
+            if (f != null && f.getParent() == grid) {
+                // A short dip while OK is held, back to the focus lift on release. Only on a press: free otherwise.
+                if (event.getAction() == KeyEvent.ACTION_DOWN && event.getRepeatCount() == 0) {
+                    f.animate().scaleX(0.97f).scaleY(0.97f).setDuration(70).start();
+                } else if (event.getAction() == KeyEvent.ACTION_UP) {
+                    float s = f.isFocused() ? 1.04f : 1f;
+                    f.animate().scaleX(s).scaleY(s).setDuration(90).start();
+                }
+            }
+        }
         return super.dispatchKeyEvent(event);
+    }
+
+    /** The remote's mouse mode sends motion, not keys: it counts as using the TV too. */
+    @Override
+    public boolean dispatchGenericMotionEvent(MotionEvent event) {
+        resetIdle();
+        return super.dispatchGenericMotionEvent(event);
+    }
+
+    /** 0-9 for the number keys (top row or number pad), -1 for any other key. */
+    private static int digitOf(int code) {
+        if (code >= KeyEvent.KEYCODE_0 && code <= KeyEvent.KEYCODE_9) return code - KeyEvent.KEYCODE_0;
+        if (code >= KeyEvent.KEYCODE_NUMPAD_0 && code <= KeyEvent.KEYCODE_NUMPAD_9) return code - KeyEvent.KEYCODE_NUMPAD_0;
+        return -1;
+    }
+
+    /** The key of the n-th app tile (0-based) in screen order, skipping the clock; null if there is none. */
+    private String nthAppKey(int n) {
+        for (LayoutStore.Item it : items) {
+            if (LayoutStore.CLOCK.equals(it.key)) continue;
+            if (n-- == 0) return it.key;
+        }
+        return null;
+    }
+
+    /** Re-arms the idle clock: one removeCallbacks and one postDelayed per key press, nothing in between. */
+    private void resetIdle() {
+        handler.removeCallbacks(idleClock);
+        if (resumed && idleMs > 0) handler.postDelayed(idleClock, idleMs);
+    }
+
+    /**
+     * The tiles turn into place one after another, sweeping from the top left, when Home comes back from an
+     * app: about 0.4 s in all, and nothing runs afterwards.
+     */
+    private void playEntrance() {
+        grid.post(() -> {
+            for (int i = 0; i < grid.getChildCount(); i++) {
+                View t = grid.getChildAt(i);
+                Rect c = grid.cellAt(i);
+                int order = c == null ? i : c.left / 2 + c.top / 2;
+                // A 2D unfold: each tile grows from a flat line to full height. Measured on this TV, a fade or
+                // withLayer() rendered every tile off-screen first, and a 3D rotation (rotationY) made the GPU
+                // redraw text the slow way each frame; a plain scale keeps the cached glyphs and costs nothing.
+                float full = t.isFocused() ? 1.04f : 1f;
+                t.setScaleY(0f);
+                t.animate().scaleY(full).setStartDelay(order * 35L).setDuration(220)
+                        .setInterpolator(new DecelerateInterpolator()).start();
+                // The delay and the curve stay on the view's animator: clear them so the focus lift isn't delayed.
+                t.animate().setStartDelay(0);
+            }
+        });
     }
 
     private int dp(float v) {
