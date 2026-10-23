@@ -100,3 +100,8 @@ Everything TV-specific is in `tiles/app/src/main/res/values/config.xml`:
 - The debloating and ADB tooling around it come from [cleanyourtv](https://github.com/Gathin23/cleanyourtv)
 
 App names and brands shown on tiles belong to their owners; the glyphs are simplified symbols, not their logos.
+
+## Licence
+
+The launcher's code is released under the [MIT License](LICENSE). The bundled Outfit font keeps its own SIL Open
+Font License, and the glyphs based on Material Icons keep the Apache License 2.0.
