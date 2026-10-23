@@ -10,16 +10,27 @@ from the remote.
 |---|---|
 | ![Clock tile flipped](docs/clock-flipped.png) | ![Full-screen clock](docs/full-screen-clock.png) |
 
+The clock tile's colour follows the time of day:
+
+![Clock tile colours: morning, afternoon, evening, night](docs/clock-colours.png)
+
 ## Features
 
 - **Tiles in four sizes**: small, medium, wide and large, packed Windows Phone style on a 10-unit grid (5 medium
   tiles per row).
 - **Arrange it from the remote**: hold **OK** on a tile (or press **Menu**) to move, resize or hide it, show hidden
   apps again, open App info, or reset the layout. The layout is saved on the TV.
-- **A live clock tile**, 12-hour with AM/PM. Every 15 seconds it flips over to show the day and date. **OK** on it
-  opens a full-screen clock that drifts slightly every minute so nothing burns into the panel.
-- **Colour per app**, taken from the app's own artwork or set in `config.xml`, and optional **white glyph icons**
-  for a uniform look; apps without a glyph keep their own icon.
+- **A live clock tile**, 12-hour with AM/PM. Every 15 seconds it flips over to show the day and date, and its
+  colour follows the time of day (sunrise, afternoon blue, sunset, night). **OK** on it opens a full-screen clock
+  that drifts slightly every minute so nothing burns into the panel.
+- **A curated palette**: Windows Phone's Metro colours at matched intensity. Apps without a set colour get the
+  palette colour nearest to their own artwork, so new apps fit in.
+- **Icons that belong together**: flat white glyphs for common apps, glyphs in a brand colour where that reads
+  better (Netflix's red N on black), and official logos turned into white silhouettes (Prime Video). Other apps
+  keep their own icon.
+- **A centred layout**: the greeting, the buttons and the tiles sit together in the middle of the screen. With
+  more apps than fit, the header stays fixed at the top while the tiles scroll under it.
+- **TV-sized text**: 20 sp tile names, readable from the sofa.
 - **A greeting** (good morning / afternoon / evening / night) and a subtle black-to-navy background.
 - **Two small top buttons**, Inputs and Wi-Fi (showing the network name), plain text until selected, then a white
   pill. No glass, blur or shadows anywhere.
@@ -30,7 +41,9 @@ from the remote.
 
 Plain Java and the Android framework's own views: no AndroidX, no libraries, no network access, no background
 services. The APK is about 90 KB. Icons and colours are loaded once and only reloaded for apps that changed;
-each icon is drawn once into a bitmap at its tile size.
+each icon is drawn once into a bitmap at its tile size. The background and the clock tile's gradients are each
+drawn once into a tiny bitmap that the GPU stretches: computing a full-screen gradient per pixel cost this TV
+about 5 ms a frame, the stretched bitmap nothing measurable.
 
 Measured on the TV it was built for (HiSilicon Hi3751V350, Android 12, 1 GB RAM), compared with the launcher it
 replaced, for the same 13 remote presses:
@@ -84,10 +97,14 @@ Everything TV-specific is in `tiles/app/src/main/res/values/config.xml`:
 | `inputs_component` | What the Inputs button opens. The default is the source menu of Cultraview/HiSilicon TVs; other TVs fall back to Android's standard input picker |
 | `default_layout` | Tile order and sizes on first start, as `package:size` (`clock` is the clock tile) |
 | `excluded_packages` | Apps never shown, such as other launchers |
-| `tile_colors` | A colour per app instead of the sampled one |
+| `tile_palette` | The colours tiles are drawn from; a sampled app colour snaps to the nearest one |
+| `tile_colors` | A colour per app, taking precedence over the palette |
 | `tile_icons` | A white glyph (`res/drawable/ic_tile_*.xml`) instead of the app's own icon |
+| `tile_glyph_colors` | A glyph drawn in a colour instead of white (Netflix's red N) |
+| `tile_icons_white` | Apps whose own icon is shown as a white silhouette (Prime Video) |
 | `tile_labels` | A tile name instead of the app's own |
-| `clock_color`, `clock_flip_seconds` | The clock tile's colour, and how often it flips (0 keeps it still) |
+| `clock_gradients` | The clock tile's colours for morning, afternoon, evening and night (two or three colours each) |
+| `clock_color`, `clock_flip_seconds` | The clock tile's fallback colour, and how often it flips (0 keeps it still) |
 | `greeting_name` | A name after the greeting |
 | `background_colors` | The background gradient |
 

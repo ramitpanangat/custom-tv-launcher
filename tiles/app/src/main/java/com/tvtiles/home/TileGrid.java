@@ -18,6 +18,17 @@ final class TileGrid extends ViewGroup {
 
     private final int gap;
     private int unit;
+    /** How far the tiles sit below the top: half-ish of the spare height when they don't fill the screen. */
+    private int yOffset;
+    /** Told whenever yOffset changes, so the header above can move down with the tiles. */
+    interface OffsetListener { void onOffset(int yOffset); }
+    private OffsetListener offsetListener;
+    private int reportedOffset = -1;
+
+    void setOffsetListener(OffsetListener listener) {
+        offsetListener = listener;
+        reportedOffset = -1;
+    }
     /** Each child's place, in grid units (left, top, right, bottom), in child order. */
     private final List<Rect> cells = new ArrayList<>();
 
@@ -60,16 +71,29 @@ final class TileGrid extends ViewGroup {
             getChildAt(i).measure(MeasureSpec.makeMeasureSpec(span(r.width()), MeasureSpec.EXACTLY),
                     MeasureSpec.makeMeasureSpec(span(r.height()), MeasureSpec.EXACTLY));
         }
-        int height = rows == 0 ? 0 : span(rows);
-        setMeasuredDimension(width, height + getPaddingTop() + getPaddingBottom());
+        int height = (rows == 0 ? 0 : span(rows)) + getPaddingTop() + getPaddingBottom();
+        // The ScrollView (fillViewport) asks for exactly the screen's height when the tiles are shorter than it:
+        // take it and sit the tiles a little above the middle (optical centre), not pinned to the top.
+        int available = MeasureSpec.getSize(heightSpec);
+        if (MeasureSpec.getMode(heightSpec) == MeasureSpec.EXACTLY && available > height) {
+            yOffset = Math.round((available - height) * 0.45f);
+            setMeasuredDimension(width, available);
+        } else {
+            yOffset = 0;
+            setMeasuredDimension(width, height);
+        }
     }
 
     @Override
     protected void onLayout(boolean changed, int l, int t, int r, int b) {
+        if (offsetListener != null && yOffset != reportedOffset) {
+            reportedOffset = yOffset;
+            offsetListener.onOffset(yOffset);
+        }
         for (int i = 0; i < getChildCount(); i++) {
             Rect c = cells.get(i);
             int left = getPaddingLeft() + c.left * (unit + gap);
-            int top = getPaddingTop() + c.top * (unit + gap);
+            int top = yOffset + getPaddingTop() + c.top * (unit + gap);
             View v = getChildAt(i);
             v.layout(left, top, left + v.getMeasuredWidth(), top + v.getMeasuredHeight());
         }

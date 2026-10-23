@@ -67,6 +67,8 @@ public class MainActivity extends Activity {
         String label;
         Drawable icon;
         int color;
+        /** config.xml tile_glyph_colors: the glyph drawn in this colour instead of white; null for white. */
+        Integer glyphTint;
         /** Activity and APK path: when both are unchanged, nothing about the tile can have changed. */
         String stamp;
         /** The icon drawn once at each size it is shown at, so a frame draws a plain bitmap. */
@@ -85,6 +87,9 @@ public class MainActivity extends Activity {
     /** The clock tile's turning face and its two sides; replaced whenever the tiles are rebuilt. */
     private View clockFace, clockFront, clockBack;
     private boolean showingBack;
+    /** The clock tile's time-of-day backgrounds, drawn on first use; and the part of the day it shows now. */
+    private Bitmap[] clockSkies;
+    private int clockSkyPart = -1;
     /** The full-screen clock while it is open, else null. */
     private FrameLayout bigClock;
     private View bigClockBody;
@@ -128,6 +133,12 @@ public class MainActivity extends Activity {
     private final Map<String, String> labelOverrides = new HashMap<>();
     /** config.xml tile_icons: package to a white glyph drawn in the tile style. */
     private final Map<String, Integer> glyphs = new HashMap<>();
+    /** config.xml tile_glyph_colors: package to the colour its glyph is drawn in. */
+    private final Map<String, Integer> glyphColors = new HashMap<>();
+    /** config.xml tile_icons_white: apps whose own icon is shown as a white silhouette. */
+    private final Set<String> whiteIcons = new HashSet<>();
+    /** config.xml tile_palette: sampled colours snap to the nearest of these. */
+    private int[] palette = new int[0];
     private final Set<String> excluded = new HashSet<>();
 
     private final BroadcastReceiver packages = new BroadcastReceiver() {
@@ -157,6 +168,24 @@ public class MainActivity extends Activity {
             int eq = entry.indexOf('=');
             if (eq > 0) labelOverrides.put(entry.substring(0, eq).trim(), entry.substring(eq + 1).trim());
         }
+        whiteIcons.addAll(Arrays.asList(getResources().getStringArray(R.array.tile_icons_white)));
+        for (String entry : getResources().getStringArray(R.array.tile_glyph_colors)) {
+            int eq = entry.indexOf('=');
+            if (eq <= 0) continue;
+            try {
+                glyphColors.put(entry.substring(0, eq).trim(), Color.parseColor(entry.substring(eq + 1).trim()));
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        List<Integer> swatches = new ArrayList<>();
+        for (String hex : getResources().getStringArray(R.array.tile_palette)) {
+            try {
+                swatches.add(Color.parseColor(hex.trim()));
+            } catch (IllegalArgumentException ignored) {
+            }
+        }
+        palette = new int[swatches.size()];
+        for (int i = 0; i < palette.length; i++) palette[i] = swatches.get(i);
         for (String entry : getResources().getStringArray(R.array.tile_icons)) {
             int eq = entry.indexOf('=');
             if (eq <= 0) continue;
@@ -247,7 +276,9 @@ public class MainActivity extends Activity {
         root.setOrientation(LinearLayout.VERTICAL);
         // No background here: the window's own black is the only full-screen fill (no overdraw).
         root.setPadding(dp(42), dp(22), dp(42), 0);
-        root.setClipChildren(false);
+        // Clip each child to its own area: scrolled tiles must stop under the fixed header instead of drawing
+        // over it. The grid's padding keeps the focus lift inside the scroll area, so the outline is not cut.
+        root.setClipChildren(true);
 
         LinearLayout bar = new LinearLayout(this);
         bar.setOrientation(LinearLayout.HORIZONTAL);
@@ -275,13 +306,18 @@ public class MainActivity extends Activity {
         scroll = new ScrollView(this);
         scroll.setVerticalScrollBarEnabled(false);
         scroll.setClipChildren(false);
-        scroll.setClipToPadding(false);
+        // Clip at the padding: scrolled tiles vanish a little below the header, not flush against it. The grid's
+        // own padding still leaves room for the focus lift.
+        scroll.setClipToPadding(true);
         scroll.setFillViewport(true);
         scroll.setPadding(0, dp(18), 0, dp(40));
         grid = new TileGrid(this);
         // Room for the focus lift on every side: a 4% zoom of the widest tile (about 470 px) reaches 9-10 px past
         // its edge, and with less margin than that the outline was clipped on the left and right.
         grid.setPadding(dp(12), dp(10), dp(12), dp(10));
+        // The header travels with the centred tiles, so the greeting and buttons sit just above them; a
+        // translation only, so nothing is laid out again.
+        grid.setOffsetListener(offset -> bar.setTranslationY(offset));
         scroll.addView(grid, new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                 ViewGroup.LayoutParams.WRAP_CONTENT));
         root.addView(scroll, new LinearLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT, 0, 1f));
@@ -300,7 +336,7 @@ public class MainActivity extends Activity {
         b.setId(View.generateViewId());
         b.setText(text);
         b.setTypeface(medium);
-        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 14);
+        b.setTextSize(TypedValue.COMPLEX_UNIT_SP, 16);
         b.setTextColor(Color.WHITE);
         b.setSingleLine(true);
         b.setEllipsize(TextUtils.TruncateAt.END);
@@ -308,7 +344,7 @@ public class MainActivity extends Activity {
         b.setPadding(dp(12), dp(7), dp(16), dp(7));
         b.setGravity(Gravity.CENTER_VERTICAL);
         Drawable icon = getDrawable(iconRes).mutate();
-        icon.setBounds(0, 0, dp(18), dp(18));
+        icon.setBounds(0, 0, dp(20), dp(20));
         b.setCompoundDrawablesRelative(icon, null, null, null);
         b.setCompoundDrawablePadding(dp(8));
         b.setCompoundDrawableTintList(ColorStateList.valueOf(Color.WHITE));
@@ -333,26 +369,30 @@ public class MainActivity extends Activity {
     private View appTile(AppEntry e, TileSize size) {
         FrameLayout t = tileFrame(e.color);
         boolean labelled = size != TileSize.SMALL;
-        int iconSize = dp(size == TileSize.SMALL ? 40 : size == TileSize.LARGE ? 112 : 72);
+        int iconSize = dp(size == TileSize.SMALL ? 48 : size == TileSize.LARGE ? 136 : 88);
+        // An official icon shown white keeps the padding it had around its own background, so it reads small
+        // next to the glyphs; draw it a third bigger.
+        if (whiteIcons.contains(e.pkg)) iconSize = Math.round(iconSize * 1.35f);
         ImageView icon = new ImageView(this);
         icon.setImageBitmap(iconBitmap(e, iconSize));
         icon.setScaleType(ImageView.ScaleType.CENTER);
         FrameLayout.LayoutParams ilp = new FrameLayout.LayoutParams(iconSize, iconSize, Gravity.CENTER);
-        if (labelled) ilp.bottomMargin = dp(14);
+        if (labelled) ilp.bottomMargin = dp(18);
         t.addView(icon, ilp);
         if (labelled) {
             TextView label = new TextView(this);
             label.setText(e.label);
             label.setTypeface(regular);
             label.setTextColor(Color.WHITE);
-            label.setTextSize(TypedValue.COMPLEX_UNIT_SP, size == TileSize.LARGE ? 17 : 14);
+            // TV text is read from about 3 m: names need to be large.
+            label.setTextSize(TypedValue.COMPLEX_UNIT_SP, size == TileSize.LARGE ? 22 : 20);
             label.setSingleLine(true);
             label.setEllipsize(TextUtils.TruncateAt.END);
             FrameLayout.LayoutParams llp = new FrameLayout.LayoutParams(ViewGroup.LayoutParams.MATCH_PARENT,
                     ViewGroup.LayoutParams.WRAP_CONTENT, Gravity.BOTTOM | Gravity.START);
-            llp.leftMargin = dp(10);
-            llp.rightMargin = dp(10);
-            llp.bottomMargin = dp(8);
+            llp.leftMargin = dp(12);
+            llp.rightMargin = dp(12);
+            llp.bottomMargin = dp(10);
             t.addView(label, llp);
         }
         t.setOnClickListener(v -> launch(e));
@@ -368,7 +408,8 @@ public class MainActivity extends Activity {
         FrameLayout t = tileFrame(clockColor);
         t.setBackground(null);   // the face carries the colour, so the whole square turns over
         FrameLayout face = new FrameLayout(this);
-        face.setBackgroundColor(clockColor);
+        clockSkyPart = dayPart();
+        face.setBackground(clockSky(clockSkyPart));
         face.setCameraDistance(8000 * density);
         View front = clockFront(size), back = clockBack(size);
         back.setVisibility(View.INVISIBLE);
@@ -410,7 +451,7 @@ public class MainActivity extends Activity {
             date.setTypeface(regular);
             date.setTextColor(0xE6FFFFFF);
             date.setSingleLine(true);
-            date.setTextSize(TypedValue.COMPLEX_UNIT_SP, size == TileSize.LARGE ? 22 : size == TileSize.WIDE ? 18 : 14);
+            date.setTextSize(TypedValue.COMPLEX_UNIT_SP, size == TileSize.LARGE ? 24 : size == TileSize.WIDE ? 21 : 16);
             col.addView(date);
         }
         return col;
@@ -433,7 +474,7 @@ public class MainActivity extends Activity {
             date.setTypeface(regular);
             date.setTextColor(0xE6FFFFFF);
             date.setSingleLine(true);
-            date.setTextSize(TypedValue.COMPLEX_UNIT_SP, size == TileSize.LARGE ? 22 : size == TileSize.WIDE ? 18 : 14);
+            date.setTextSize(TypedValue.COMPLEX_UNIT_SP, size == TileSize.LARGE ? 24 : size == TileSize.WIDE ? 21 : 16);
             col.addView(date);
         }
         return col;
@@ -495,11 +536,56 @@ public class MainActivity extends Activity {
                 }).start();
     }
 
-    private void updateGreeting() {
+    /** 0 morning (5-12), 1 afternoon (12-17), 2 evening (17-22), 3 night: the greeting and the clock tile agree. */
+    private static int dayPart() {
         int hour = Calendar.getInstance().get(Calendar.HOUR_OF_DAY);
-        int part = hour >= 5 && hour < 12 ? R.string.good_morning
-                : hour >= 12 && hour < 17 ? R.string.good_afternoon
-                : hour >= 17 && hour < 22 ? R.string.good_evening : R.string.good_night;
+        return hour >= 5 && hour < 12 ? 0 : hour >= 12 && hour < 17 ? 1 : hour >= 17 && hour < 22 ? 2 : 3;
+    }
+
+    /**
+     * The clock tile's background for a part of the day (config.xml clock_gradients): drawn once into a 96x48
+     * bitmap and cached, then stretched by the GPU with filtering, which costs a frame no more than a plain colour.
+     */
+    private Drawable clockSky(int part) {
+        if (clockSkies == null) {
+            String[] specs = getResources().getStringArray(R.array.clock_gradients);
+            clockSkies = new Bitmap[specs.length];
+            for (int i = 0; i < specs.length; i++) {
+                String[] c = specs[i].split(",");
+                try {
+                    // Two or more colours: a sunrise needs a middle stop, or orange to blue passes through grey.
+                    int[] colors = new int[c.length];
+                    for (int k = 0; k < c.length; k++) colors[k] = Color.parseColor(c[k].trim());
+                    Bitmap b = Bitmap.createBitmap(96, 48, Bitmap.Config.ARGB_8888);
+                    GradientDrawable g = new GradientDrawable(GradientDrawable.Orientation.TL_BR, colors);
+                    g.setBounds(0, 0, 96, 48);
+                    g.draw(new Canvas(b));
+                    clockSkies[i] = b;
+                } catch (IllegalArgumentException ignored) {
+                }
+            }
+        }
+        if (part >= clockSkies.length || clockSkies[part] == null) {
+            return new android.graphics.drawable.ColorDrawable(clockColor);
+        }
+        android.graphics.drawable.BitmapDrawable d =
+                new android.graphics.drawable.BitmapDrawable(getResources(), clockSkies[part]);
+        d.setFilterBitmap(true);
+        return d;
+    }
+
+    /** Repaints the clock tile only when the part of the day has changed: about four times a day. */
+    private void updateClockSky() {
+        int part = dayPart();
+        if (clockFace == null || part == clockSkyPart) return;
+        clockSkyPart = part;
+        clockFace.setBackground(clockSky(part));
+    }
+
+    private void updateGreeting() {
+        updateClockSky();
+        int part = new int[]{R.string.good_morning, R.string.good_afternoon, R.string.good_evening,
+                R.string.good_night}[dayPart()];
         String name = getString(R.string.greeting_name).trim();
         String text = name.isEmpty() ? getString(part) : getString(R.string.greeting_with_name, getString(part), name);
         if (!text.contentEquals(greeting.getText())) greeting.setText(text);
@@ -635,6 +721,7 @@ public class MainActivity extends Activity {
                 Drawable own = ri.loadIcon(pm);
                 Integer glyph = glyphs.get(pkg);
                 e.icon = glyph != null ? getDrawable(glyph) : own;
+                if (glyph != null) e.glyphTint = glyphColors.get(pkg);
                 Integer color = colorOverrides.get(pkg);
                 if (color != null) {
                     e.color = color;
@@ -642,7 +729,7 @@ public class MainActivity extends Activity {
                     // The colour always comes from the app's own artwork, never from a white glyph.
                     Drawable art = ai.loadBanner(pm);
                     if (art == null) art = ai.applicationInfo.loadBanner(pm);
-                    e.color = AppColors.sample(art != null ? art : own);
+                    e.color = AppColors.nearest(AppColors.sample(art != null ? art : own), palette);
                 }
                 apps.put(pkg, e);
                 cache.put(pkg, e);
@@ -658,7 +745,9 @@ public class MainActivity extends Activity {
             b = Bitmap.createBitmap(size, size, Bitmap.Config.ARGB_8888);
             Drawable d = e.icon.getConstantState() != null ? e.icon.getConstantState().newDrawable().mutate() : e.icon;
             d.setBounds(0, 0, size, size);
+            if (e.glyphTint != null) d.setTint(e.glyphTint);
             d.draw(new Canvas(b));
+            if (whiteIcons.contains(e.pkg)) AppColors.whiten(b);
             e.iconAt.put(size, b);
         }
         return b;

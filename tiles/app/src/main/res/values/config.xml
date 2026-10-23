@@ -23,16 +23,48 @@
         <item>com.zeasn.launcher</item>
     </string-array>
 
-    <!-- A tile colour instead of the one sampled from the app's artwork, "package=#RRGGBB". -->
-    <string-array name="tile_colors" translatable="false">
-        <item>com.google.android.youtube.tv=#E62117</item>
-        <item>com.netflix.mediaclient=#B20710</item>
-        <item>com.amazon.amazonvideo.livingroom=#0578FF</item>   <!-- the icon's own blue, so the icon blends in -->
+    <!-- The tile palette: Windows Phone's Metro colours, all at a similar intensity so no tile shouts. An app with
+         no colour of its own below gets the palette colour nearest to its artwork, so new apps fit in. Empty: the
+         sampled colour as it is. -->
+    <string-array name="tile_palette" translatable="false">
+        <item>#E51400</item>   <!-- red -->
+        <item>#A20025</item>   <!-- crimson -->
+        <item>#D80073</item>   <!-- magenta -->
+        <item>#AA00FF</item>   <!-- violet -->
+        <item>#6A00FF</item>   <!-- indigo -->
+        <item>#0050EF</item>   <!-- cobalt -->
+        <item>#1BA1E2</item>   <!-- cyan -->
+        <item>#00ABA9</item>   <!-- teal -->
+        <item>#008A00</item>   <!-- emerald -->
+        <item>#60A917</item>   <!-- green -->
+        <item>#F0A30A</item>   <!-- amber -->
+        <item>#FA6800</item>   <!-- orange -->
+        <item>#825A2C</item>   <!-- brown -->
+        <item>#647687</item>   <!-- steel -->
+        <item>#76608A</item>   <!-- mauve -->
+    </string-array>
 
-        <item>com.android.vending=#01875F</item>
-        <item>com.android.settings=#3F4A54</item>
-        <item>com.cultraview.setting=#5C2D91</item>
-        <item>com.ecloud.eshare.server=#D9452E</item>
+    <!-- A tile colour instead of the palette's nearest, "package=#RRGGBB". Neighbours get clearly different hues. -->
+    <string-array name="tile_colors" translatable="false">
+        <item>com.google.android.youtube.tv=#FF0000</item>        <!-- YouTube's own red, with the white logo -->
+        <item>com.netflix.mediaclient=#101010</item>              <!-- near-black, like Netflix's icon (red N below) -->
+        <item>com.amazon.amazonvideo.livingroom=#0050EF</item>    <!-- cobalt -->
+        <item>com.android.vending=#008A00</item>                  <!-- emerald -->
+        <item>com.android.settings=#647687</item>                 <!-- steel -->
+        <item>com.ecloud.eshare.server=#FA6800</item>             <!-- orange -->
+        <item>com.cultraview.filemanager=#F0A30A</item>           <!-- amber -->
+        <item>com.cultraview.setting=#6A00FF</item>               <!-- indigo -->
+    </string-array>
+
+    <!-- A glyph drawn in a colour instead of white, "package=#RRGGBB": a brand mark on a dark tile. -->
+    <string-array name="tile_glyph_colors" translatable="false">
+        <item>com.netflix.mediaclient=#E50914</item>   <!-- Netflix red -->
+    </string-array>
+
+    <!-- Apps whose own icon is shown as a white silhouette (its light parts kept, its background dropped), for an
+         official logo that should still match the white glyphs. -->
+    <string-array name="tile_icons_white" translatable="false">
+        <item>com.amazon.amazonvideo.livingroom</item>
     </string-array>
     <!-- A name after the greeting at the top left: "Sam" shows "Good evening, Sam". Empty: the greeting alone. -->
     <string name="greeting_name" translatable="false"></string>
@@ -45,6 +77,16 @@
     </string-array>
     <!-- Seconds between clock tile flips (time on the front, day and date on the back). 0 keeps it still. -->
     <integer name="clock_flip_seconds">15</integer>
+    <!-- The clock tile's background through the day, as "#from,#to" (or "#from,#middle,#to") gradients (top left to bottom right) in this
+         order: morning (5-12), afternoon (12-17), evening (17-22), night (22-5), the same hours as the greeting.
+         Each is drawn once into a tiny bitmap that the GPU stretches; the tile changes about four times a day.
+         Leave the array empty for the plain clock_color. -->
+    <string-array name="clock_gradients" translatable="false">
+        <item>#F09A51,#D9768F,#5B8BD9</item>   <!-- morning: sunrise orange, through rose, to sky blue -->
+        <item>#1BA1E2,#0050EF</item>   <!-- afternoon: bright cyan to blue -->
+        <item>#E2535C,#6A3FA0</item>   <!-- evening: sunset coral to purple -->
+        <item>#2B1E6E,#0A0F2C</item>   <!-- night: deep indigo to near-black navy -->
+    </string-array>
     <!-- The clock tile's colour. -->
     <string name="clock_color" translatable="false">#1BA1E2</string>
     <!-- A white glyph (res/drawable/ic_tile_*) instead of the app's own icon, "package=drawable". Apps not
