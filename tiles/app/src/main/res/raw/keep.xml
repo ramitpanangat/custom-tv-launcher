@@ -1,0 +1,4 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The tile glyphs are looked up by name from config.xml tile_icons, so the resource shrinker can't see them. -->
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:keep="@drawable/ic_tile_*" />

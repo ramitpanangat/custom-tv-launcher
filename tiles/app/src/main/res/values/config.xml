@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Settings for this TV. The tile layout itself is edited on the TV (hold OK on a tile) and saved there. -->
+<resources>
+    <string name="app_name" translatable="false">Tiles</string>
+
+    <!-- What the Inputs button opens: a component first (Geepas/Cultraview source menu), then the standard
+         Android TV input picker if that component is missing. -->
+    <string name="inputs_component" translatable="false">com.cultraview.setting/.SourceActivity</string>
+
+    <!-- Tiles on a first start, in this order, as "key:size". size is small, medium, wide or large;
+         "clock" is the clock tile. Apps not listed follow as medium tiles, sorted by name. -->
+    <string-array name="default_layout" translatable="false">
+        <item>clock:wide</item>
+        <item>com.google.android.youtube.tv:medium</item>
+        <item>com.netflix.mediaclient:medium</item>
+        <item>com.amazon.amazonvideo.livingroom:medium</item>
+        <item>com.android.vending:medium</item>
+    </string-array>
+
+    <!-- Never shown as tiles: launchers. -->
+    <string-array name="excluded_packages" translatable="false">
+        <item>com.gathin.tvhome</item>
+        <item>com.zeasn.launcher</item>
+    </string-array>
+
+    <!-- A tile colour instead of the one sampled from the app's artwork, "package=#RRGGBB". -->
+    <string-array name="tile_colors" translatable="false">
+        <item>com.google.android.youtube.tv=#E62117</item>
+        <item>com.netflix.mediaclient=#B20710</item>
+        <item>com.amazon.amazonvideo.livingroom=#0578FF</item>   <!-- the icon's own blue, so the icon blends in -->
+
+        <item>com.android.vending=#01875F</item>
+        <item>com.android.settings=#3F4A54</item>
+        <item>com.cultraview.setting=#5C2D91</item>
+        <item>com.ecloud.eshare.server=#D9452E</item>
+    </string-array>
+    <!-- A name after the greeting at the top left: "Sam" shows "Good evening, Sam". Empty: the greeting alone. -->
+    <string name="greeting_name" translatable="false"></string>
+    <!-- The background behind the tiles: a gradient from the top left to the bottom right, painted once as the
+         window background (no image, no extra drawing per frame). -->
+    <string-array name="background_colors" translatable="false">
+        <item>#000000</item>
+        <item>#03060F</item>
+        <item>#0A1530</item>
+    </string-array>
+    <!-- Seconds between clock tile flips (time on the front, day and date on the back). 0 keeps it still. -->
+    <integer name="clock_flip_seconds">15</integer>
+    <!-- The clock tile's colour. -->
+    <string name="clock_color" translatable="false">#1BA1E2</string>
+    <!-- A white glyph (res/drawable/ic_tile_*) instead of the app's own icon, "package=drawable". Apps not
+         listed, such as ones installed later, keep their own icon. -->
+    <string-array name="tile_icons" translatable="false">
+        <item>com.google.android.youtube.tv=ic_tile_youtube</item>
+        <item>com.netflix.mediaclient=ic_tile_netflix</item>
+        <item>com.android.vending=ic_tile_store</item>
+        <item>com.android.settings=ic_tile_settings</item>
+        <item>com.ecloud.eshare.server=ic_tile_cast</item>
+        <item>com.cultraview.filemanager=ic_tile_folder</item>
+        <item>com.cultraview.setting=ic_tile_tv_settings</item>
+    </string-array>
+    <!-- A tile name instead of the app's own, "package=Name". -->
+    <string-array name="tile_labels" translatable="false">
+        <item>com.android.settings=Android Settings</item>
+        <item>com.ecloud.eshare.server=EShare</item>
+        <item>com.cultraview.setting=TV Settings</item>
+    </string-array>
+</resources>

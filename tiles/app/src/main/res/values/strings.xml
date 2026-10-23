@@ -1,0 +1,23 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="inputs">Inputs</string>
+    <string name="offline">Offline</string>
+    <string name="online">Online</string>
+    <string name="clock">Clock</string>
+    <string name="cant_open">Can\'t open that</string>
+    <string name="move">Move</string>
+    <string name="size_as">Size: %1$s</string>
+    <string name="hide">Hide this tile</string>
+    <string name="app_info">App info</string>
+    <string name="show_hidden">Show hidden apps (%1$d)</string>
+    <string name="show_hidden_title">Show a hidden app</string>
+    <string name="reset_layout">Reset layout</string>
+    <string name="reset_question">Put every tile back in the default order and size, and show hidden apps again?</string>
+    <string name="reset">Reset</string>
+    <string name="move_hint">Arrows move the tile. OK or Back when done.</string>
+    <string name="good_morning">Good morning</string>
+    <string name="good_afternoon">Good afternoon</string>
+    <string name="good_evening">Good evening</string>
+    <string name="good_night">Good night</string>
+    <string name="greeting_with_name">%1$s, %2$s</string>
+</resources>

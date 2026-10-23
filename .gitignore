@@ -1,0 +1,21 @@
+# Build output
+build/
+.gradle/
+*.apk
+*.aab
+
+# Machine-specific: the Android SDK path
+local.properties
+
+# IDE
+.idea/
+*.iml
+
+# The cleanyourtv checkout install-tiles.ps1 uses, with its Python venv and ADB key
+cleanyourtv/
+tools/adbkey/
+
+# Session files: never commit backups (serial numbers, device ids) or screenshots with Wi-Fi names
+backup/
+shots/
+work/

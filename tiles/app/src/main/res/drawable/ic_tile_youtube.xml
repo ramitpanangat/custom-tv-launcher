@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Tile glyph: a rounded screen with a play cut-out (drawn for this launcher). -->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="24dp"
+    android:height="24dp"
+    android:viewportWidth="24"
+    android:viewportHeight="24">
+    <path
+        android:fillColor="#FFFFFFFF"
+        android:fillType="evenOdd"
+        android:pathData="M6,5h12a4,4 0 0 1 4,4v6a4,4 0 0 1 -4,4H6a4,4 0 0 1 -4,-4V9a4,4 0 0 1 4,-4zM10,8.5v7l6,-3.5z" />
+</vector>
