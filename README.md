@@ -10,8 +10,6 @@ from the remote.
 |---|---|
 | ![Clock tile flipped](docs/clock-flipped.png) | ![Full-screen clock](docs/full-screen-clock.png) |
 
-(The screenshots were taken before the clock switched to 12-hour time with AM/PM.)
-
 ## Features
 
 - **Tiles in four sizes**: small, medium, wide and large, packed Windows Phone style on a 10-unit grid (5 medium
