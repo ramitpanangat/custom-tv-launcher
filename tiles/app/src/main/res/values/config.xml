@@ -96,7 +96,7 @@
         <item>com.netflix.mediaclient=ic_tile_netflix</item>
         <item>com.android.vending=ic_tile_store</item>
         <item>com.android.settings=ic_tile_settings</item>
-        <item>com.ecloud.eshare.server=ic_tile_cast</item>
+        <item>com.ecloud.eshare.server=ic_tile_eshare</item>
         <item>com.cultraview.filemanager=ic_tile_folder</item>
         <item>com.cultraview.setting=ic_tile_tv_settings</item>
     </string-array>
